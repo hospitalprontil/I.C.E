@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cartão de Emergência ICE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        /* Proporção e Estilo Vertical (Retrato/Crachá) */
+        .ice-card {
+            width: 260px;
+            height: 410px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            flex-shrink: 0;
+        }
+
+        /* Estilos de Impressão */
+        @media print {
+            body {
+                background-color: #ffffff !important;
+                color: #000000 !important;
+                padding: 0 !important;
+                /* Força o navegador a imprimir as cores de fundo no PDF */
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .ice-card {
+                box-shadow: none !important;
+                border: 1px solid #94a3b8 !important;
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen font-sans antialiased p-3 sm:p-6 md:p-8" id="bodyThemeContainer" data-theme="masculino">
+
+    <div class="max-w-7xl mx-auto space-y-6">
+        
+        <!-- Header Principal -->
+        <header class="bg-white border border-slate-200/80 rounded-2xl p-5 md:p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
+            <div class="flex items-center gap-4">
+                <div id="headerIconBox" class="w-12 h-12 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-red-600 shrink-0 shadow-sm transition-colors">
+                    <i data-lucide="shield-alert" class="w-7 h-7"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                        Gerador de Cartão de Emergência <span id="headerBadge" class="bg-red-100 text-red-700 text-xs px-2.5 py-0.5 rounded-full font-bold uppercase transition-colors">I.C.E.</span>
+                    </h1>
+                    <p class="text-slate-500 text-xs sm:text-sm mt-0.5">Preencha seus dados de saúde e escolha o tema para gerar o cartão impresso.</p>
+                </div>
+            </div>
+            
+            <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                <!-- Seletor de Tema -->
+                <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 w-full md:w-auto">
+                    <button type="button" onclick="setTheme('adulto')" id="btnThemeAdulto" class="flex-1 md:flex-initial px-3 py-1.5 text-xs font-bold rounded-lg transition-all bg-white text-slate-900 shadow-sm">Adulto</button>
+                    <div id="colorPickerContainer" class="flex items-center px-2 border-x border-slate-200 mx-1 transition-opacity" title="Escolha a cor predominante">
+                        <input type="color" id="adultColorPicker" value="#dc2626" class="w-7 h-7 cursor-pointer border-0 p-0 bg-transparent rounded shadow-sm">
+                    </div>
+                    <button type="button" onclick="setTheme('crianca')" id="btnThemeCrianca" class="flex-1 md:flex-initial px-3 py-1.5 text-xs font-bold rounded-lg transition-all text-slate-600 hover:text-slate-900">Infantil</button>
+                </div>
+
+                <button onclick="window.print()" id="btnPrint" class="w-full md:w-auto bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold px-5 py-3 rounded-xl flex items-center justify-center gap-2.5 transition shadow-lg shadow-red-600/20">
+                    <i data-lucide="printer" class="w-5 h-5"></i>
+                    <span>Imprimir / Salvar PDF</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            <!-- FORMULARIO (Coluna Esquerda) -->
+            <div class="lg:col-span-6 bg-white border border-slate-200/80 rounded-2xl p-5 md:p-6 space-y-6 no-print shadow-sm">
+                
+                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                        <i data-lucide="user-check" class="w-5 h-5 text-red-600"></i>
+                        Informações do Paciente & Saúde
+                    </h2>
+                    <span class="text-xs text-slate-400 font-medium">*Atualização em tempo real</span>
+                </div>
+
+                <form id="iceForm" class="space-y-6" onsubmit="event.preventDefault();">
+                    
+                    <!-- Secao 1: Identificacao -->
+                    <div class="space-y-3">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i data-lucide="id-card" class="w-3.5 h-3.5 text-slate-500"></i> Identificação
+                        </h3>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Nome Completo</label>
+                            <input type="text" id="inputNome" value="JOÃO DA SILVA OLIVEIRA" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2 text-sm text-slate-900 font-medium focus:outline-none focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 transition">
+                        </div>
+                        
+                        <!-- Nasc, Peso e Altura -->
+                        <div class="grid grid-cols-3 gap-2 pt-1">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Nascimento</label>
+                                <input type="text" id="inputNasc" value="15/08/1988" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-sm text-slate-900 font-medium focus:outline-none focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 transition">
+                            </div>
+                            <div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="text-xs font-semibold text-slate-700">Peso</label>
+                                    <label class="flex items-center gap-1 text-[11px] text-slate-500 font-medium cursor-pointer select-none">
+                                        <input type="checkbox" id="togglePeso" checked class="w-3.5 h-3.5 rounded border-slate-300 text-red-600 focus:ring-red-500"> Exibir
+                                    </label>
+                                </div>
+                                <input type="text" id="inputPeso" value="78 kg" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-sm text-slate-900 font-medium focus:outline-none focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 transition">
+                            </div>
+                            <div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="text-xs font-semibold text-slate-700">Altura</label>
+                                    <label class="flex items-center gap-1 text-[11px] text-slate-500 font-medium cursor-pointer select-none">
+                                        <input type="checkbox" id="toggleAltura" checked class="w-3.5 h-3.5 rounded border-slate-300 text-red-600 focus:ring-red-500"> Exibir
+                                    </label>
+                                </div>
+                                <input type="text" id="inputAltura" value="1,78 m" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-sm text-slate-900 font-medium focus:outline-none focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 transition">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Tipo Sanguíneo</label>
+                            <select id="inputTipoSangue" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2 text-sm text-slate-900 font-bold focus:outline-none focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 transition">
+                                <option value="O+">O+ (Doador Universal P/ Positivos)</option>
+                                <option value="O-">O- (Doador Universal Geral)</option>
+                                <option value="A+">A+</option>
+                                <option value="A-">A-</option>
+                                <option value="B+">B+</option>
+                                <option value="B-">B-</option>
+                                <option value="AB+">AB+</option>
+                                <option value="AB-">AB-</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Secao 2: Contatos ICE -->
+                    <div class="space-y-3 border-t border-slate-100 pt-5">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i data-lucide="phone" class="w-3.5 h-3.5 text-slate-500"></i> Contatos de Emergência (I.C.E.)
+                        </h3>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Contato Principal (Nome / Parentesco / Tel)</label>
+                            <input type="text" id="inputIce1" value="Maria Silva (Esposa) - (11) 98765-4321" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2 text-sm text-slate-900 font-medium focus:outline-none focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 transition">
+                        </div>
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <label class="block text-xs font-semibold text-slate-700">Contato Secundário (Opcional)</label>
+                                <label class="flex items-center gap-1.5 text-xs text-slate-500 font-medium cursor-pointer select-none">
+                                    <input type="checkbox" id="toggleIce2" checked class="w-4 h-4 rounded border-slate-300 text-red-600 focus:ring-red-500">
+                                    Exibir
+                                </label>
+                            </div>
+                            <input type="text" id="inputIce2" value="Carlos Silva (Irmão) - (11) 91234-5678" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2 text-sm text-slate-900 font-medium focus:outline-none focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 transition">
+                        </div>
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <label class="block text-xs font-semibold text-slate-700">Contato 3 (Opcional)</label>
+                                <label class="flex items-center gap-1.5 text-xs text-slate-500 font-medium cursor-pointer select-none">
+                                    <input type="checkbox" id="toggleIce3" class="w-4 h-4 rounded border-slate-300 text-red-600 focus:ring-red-500">
+                                    Exibir
+                                </label>
+                            </div>
+                            <input type="text" id="inputIce3" value="Ana Souza (Mãe) - (11) 99999-8888" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2 text-sm text-slate-900 font-medium focus:outline-none focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 transition">
+                        </div>
+                    </div>
+
+                    <!-- Secao 3: Alertas Medicos & Toggles -->
+                    <div class="space-y-4 border-t border-slate-100 pt-5">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i data-lucide="activity" class="w-3.5 h-3.5 text-slate-500"></i> Alertas Médicos & Opções
+                        </h3>
+                        
+                        <!-- Alergias -->
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <label class="block text-xs font-semibold text-slate-700">Alergias Críticas</label>
+                                <label class="flex items-center gap-1.5 text-xs text-slate-500 font-medium cursor-pointer select-none">
+                                    <input type="checkbox" id="toggleAlergias" checked class="w-4 h-4 rounded border-slate-300 text-red-600 focus:ring-red-500"> Exibir
+                                </label>
+                            </div>
+                            <input type="text" id="inputAlergias" value="Dipirona, Picada de Abelha/Vespa" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2 text-sm text-slate-900 font-medium focus:outline-none focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 transition">
+                        </div>
+
+                        <!-- Condicoes Medicas -->
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <label class="block text-xs font-semibold text-slate-700">Condições Médicas / Riscos</label>
+                                <label class="flex items-center gap-1.5 text-xs text-slate-500 font-medium cursor-pointer select-none">
+                                    <input type="checkbox" id="toggleCondicoes" checked class="w-4 h-4 rounded border-slate-300 text-red-600 focus:ring-red-500"> Exibir
+                                </label>
+                            </div>
+                            <input type="text" id="inputCondicoes" value="Risco de Anafilaxia, Asma Moderada" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2 text-sm text-slate-900 font-medium focus:outline-none focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 transition">
+                        </div>
+
+                        <!-- Uso de Medicamentos -->
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <label class="block text-xs font-semibold text-slate-700">Uso de Medicamentos (Contínuos / Diários)</label>
+                                <label class="flex items-center gap-1.5 text-xs text-slate-500 font-medium cursor-pointer select-none">
+                                    <input type="checkbox" id="toggleMeds" checked class="w-4 h-4 rounded border-slate-300 text-red-600 focus:ring-red-500"> Exibir
+                                </label>
+                            </div>
+                            <input type="text" id="inputMeds" value="Losartana 50mg (1x ao dia), Bombinha de Albuterol" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2 text-sm text-slate-900 font-medium focus:outline-none focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 transition">
+                        </div>
+
+                        <!-- Epipen / Injetavel -->
+                        <div class="p-3.5 bg-amber-50 border border-amber-200/80 rounded-xl space-y-2">
+                            <div class="flex items-center justify-between">
+                                <label class="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                                    <i data-lucide="syringe" class="w-4 h-4 text-amber-600"></i> Epipen / Autoinjetor no Kit
+                                </label>
+                                <label class="flex items-center gap-1.5 text-xs text-amber-800 font-semibold cursor-pointer select-none">
+                                    <input type="checkbox" id="toggleEpipen" checked class="w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500">
+                                    Ativo no cartão
+                                </label>
+                            </div>
+                            <input type="text" id="inputEpipenLoc" value="Bolso frontal vermelho da bolsa de apoio" placeholder="Ex: Bolso frontal da mochila" class="w-full bg-white border border-amber-200 rounded-lg px-3 py-1.5 text-xs text-amber-950 font-medium focus:outline-none focus:border-amber-500 transition">
+                        </div>
+
+                        <!-- Plano de Saude -->
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <label class="block text-xs font-semibold text-slate-700">Plano de Saúde / Convênio</label>
+                                <label class="flex items-center gap-1.5 text-xs text-slate-500 font-medium cursor-pointer select-none">
+                                    <input type="checkbox" id="togglePlano" checked class="w-4 h-4 rounded border-slate-300 text-red-600 focus:ring-red-500"> Exibir
+                                </label>
+                            </div>
+                            <input type="text" id="inputPlano" value="Unimed - Cartão 0123.45678.90 - Central: 0800 123 456" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2 text-sm text-slate-900 font-medium focus:outline-none focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 transition">
+                        </div>
+
+                        <!-- Hospital de Referência -->
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <label class="block text-xs font-semibold text-slate-700">Hospital de Referência</label>
+                                <label class="flex items-center gap-1.5 text-xs text-slate-500 font-medium cursor-pointer select-none">
+                                    <input type="checkbox" id="toggleHospital" checked class="w-4 h-4 rounded border-slate-300 text-red-600 focus:ring-red-500"> Exibir
+                                </label>
+                            </div>
+                            <input type="text" id="inputHospital" value="Hospital Sírio-Libanês / Rede D'Or" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2 text-sm text-slate-900 font-medium focus:outline-none focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 transition">
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+
+            <!-- PREVIEW DO CARTAO (Coluna Direita) -->
+            <div class="lg:col-span-6 space-y-4">
+                
+                <div class="flex items-center justify-between no-print bg-white p-4 border border-slate-200/80 rounded-xl shadow-sm">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="eye" class="w-5 h-5 text-red-600" id="previewIconTitle"></i>
+                        <h3 class="font-bold text-slate-900 text-sm md:text-base">Pré-Visualização (Formato Crachá)</h3>
+                    </div>
+                    <span id="themeIndicatorLabel" class="text-[11px] bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full border border-slate-200 font-bold uppercase tracking-wider">
+                        Tema: Adulto M.
+                    </span>
+                </div>
+
+                <!-- Card Container (Lado a Lado no Desktop/Print, Empilhado no Mobile) -->
+                <div class="flex flex-col sm:flex-row print:flex-row items-center sm:items-start print:items-start justify-center gap-6 sm:gap-2 print:gap-2 py-4 w-full max-w-[600px] mx-auto">
+                    
+                    <!-- CARTÃO FRENTE (PORTRAIT) -->
+                    <div class="ice-card relative bg-white overflow-hidden flex flex-col mx-auto sm:mx-0">
+                        
+                        <!-- Marca d'agua Infantil (Sobreposição) -->
+                        <div class="watermark-bg absolute inset-0 z-50 flex items-center justify-center pointer-events-none transition-opacity duration-500 opacity-0 mix-blend-multiply">
+                            <img src="barraca ice.png" alt="Acampamento" class="w-full h-full object-cover opacity-[0.15]" onerror="this.style.display='none'">
+                        </div>
+
+                        <!-- Header FRENTE -->
+                        <div id="cardFrontHeader" class="bg-red-600 text-white pt-2 pb-6 px-4 flex flex-col items-center justify-center text-center relative z-10 rounded-t-xl transition-colors">
+                            <!-- Furinho Argola -->
+                            <div class="absolute top-2 left-2 w-4 h-4 rounded-full bg-slate-100 border border-slate-300/50 shadow-inner z-20 print:border-slate-400 flex items-center justify-center">
+                                <div class="w-2 h-2 rounded-full bg-slate-200/50"></div>
+                            </div>
+                            
+                            <div id="cardFrontBadgeIcon" class="bg-white text-red-600 p-1 rounded-full shadow-sm mb-1 mt-0.5 transition-colors">
+                                <i data-lucide="shield-alert" class="w-4 h-4"></i>
+                            </div>
+                            <h4 class="font-black text-[14px] tracking-wider uppercase leading-tight text-white">EMERGÊNCIA MÉDICA</h4>
+                            
+                        </div>
+
+                        <!-- Sangue flutuante -->
+                        <div class="flex justify-center -mt-5 relative z-20">
+                            <div id="cardBloodBadge" class="bg-white border-[3px] border-red-600 w-11 h-11 rounded-full flex flex-col items-center justify-center shadow-md transition-colors">
+                                <span class="text-[7px] uppercase font-bold text-slate-500 leading-none mb-0.5">TIPO</span>
+                                <span id="cardTipoSangue" class="text-base font-black text-red-600 leading-none transition-colors">O+</span>
+                            </div>
+                        </div>
+
+                        <!-- Corpo FRENTE -->
+                        <div class="px-4 py-1.5 flex-grow flex flex-col gap-1.5 relative z-10">
+                            <!-- Nome -->
+                            <div class="text-center pb-1 border-b border-slate-100">
+                                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Nome do Paciente</span>
+                                <p id="cardNome" class="font-extrabold text-slate-900 text-[14px] uppercase leading-tight">JOÃO DA SILVA OLIVEIRA</p>
+                            </div>
+                            
+                            <!-- Nasc, Peso e Altura em uma linha -->
+                            <div id="blockNascPesoAltura" class="flex justify-center items-center text-center gap-2 pb-1 border-b border-slate-100">
+                                <div id="cardBoxNasc" class="flex-1">
+                                    <span class="text-[8px] font-bold text-slate-400 uppercase block mb-0.5">NASCIMENTO</span>
+                                    <span id="cardNasc" class="font-mono text-[11px] font-bold text-slate-800 block">15/08/1988</span>
+                                </div>
+                                
+                                <div id="cardDividerNasc" class="w-[1px] h-5 bg-slate-200"></div>
+                                
+                                <div id="cardBoxPeso" class="flex-1">
+                                    <span class="text-[8px] font-bold text-slate-400 uppercase block mb-0.5">PESO</span>
+                                    <span id="cardPeso" class="font-mono text-[11px] font-bold text-slate-800 block">78 kg</span>
+                                </div>
+                                
+                                <div id="cardDividerPesoAltura" class="w-[1px] h-5 bg-slate-200"></div>
+                                
+                                <div id="cardBoxAltura" class="flex-1">
+                                    <span class="text-[8px] font-bold text-slate-400 uppercase block mb-0.5">ALTURA</span>
+                                    <span id="cardAltura" class="font-mono text-[11px] font-bold text-slate-800 block">1,78 m</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Contatos ICE -->
+                            <div class="space-y-1 flex-grow">
+                                <span id="cardIceTitle" class="text-[9.5px] font-bold text-red-600 uppercase tracking-wider flex items-center justify-center gap-1 mb-1 transition-colors">
+                                    <i data-lucide="phone-call" class="w-3.5 h-3.5"></i> CONTATOS DE EMERGÊNCIA
+                                </span>
+                                <div class="space-y-1">
+                                    <p id="cardIce1" class="font-bold text-slate-900 bg-red-50 p-1.5 rounded border border-red-100/80 leading-snug text-[10.5px] text-center shadow-sm">Maria Silva (Esposa)<br>(11) 98765-4321</p>
+                                    <p id="cardIce2" class="font-semibold text-slate-700 bg-slate-50 p-1 rounded border border-slate-200 leading-snug text-[10.5px] text-center">Carlos Silva (Irmão)<br>(11) 91234-5678</p>
+                                    <p id="cardIce3" style="display: none;" class="font-semibold text-slate-700 bg-slate-50 p-1 rounded border border-slate-200 leading-snug text-[10.5px] text-center">Ana Souza (Mãe)<br>(11) 99999-8888</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Footer FRENTE (SAMU / BOMBEIROS) -->
+                        <div id="cardFrontFooter" class="bg-red-600 text-white px-3 py-2 flex justify-between items-center w-full mt-auto border-t border-red-700 relative z-10 transition-colors">
+                            <span class="flex items-center gap-1 font-black text-[11.5px] tracking-wider">
+                                <i data-lucide="phone-call" class="w-3.5 h-3.5 text-white"></i> SAMU: 192
+                            </span>
+                            <span class="flex items-center gap-1 font-black text-[11.5px] tracking-wider">
+                                <i data-lucide="phone-call" class="w-3.5 h-3.5 text-white"></i> BOMBEIROS: 193
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- LINHA DE CORTE E DOBRA (Exibida no desktop e impressora) -->
+                    <div class="hidden sm:flex print:flex flex-col items-center justify-center w-8 h-[410px] relative">
+                        <div class="border-l-2 border-dashed border-slate-300 h-full"></div>
+                        <div class="absolute bg-slate-100 text-slate-400 rounded-full p-1 border border-slate-200 shadow-sm print:hidden">
+                            <i data-lucide="scissors" class="w-4 h-4 text-slate-500"></i>
+                        </div>
+                    </div>
+                    
+                    <!-- Linha de divisão horizontal (Exibida apenas no mobile) -->
+                    <div class="flex sm:hidden print:hidden w-full items-center justify-center py-2 relative">
+                        <div class="border-t-2 border-dashed border-slate-300 w-full"></div>
+                        <div class="absolute bg-slate-100 text-slate-400 rounded-full p-1 border border-slate-200 shadow-sm">
+                            <i data-lucide="scissors" class="w-4 h-4 text-slate-500"></i>
+                        </div>
+                    </div>
+
+                    <!-- CARTÃO VERSO (PORTRAIT) -->
+                    <div class="ice-card relative bg-white overflow-hidden flex flex-col mx-auto sm:mx-0">
+                        
+                        <!-- Marca d'agua Infantil (Sobreposição) -->
+                        <div class="watermark-bg absolute inset-0 z-50 flex items-center justify-center pointer-events-none transition-opacity duration-500 opacity-0">
+                            <img src="barraca ice.png" alt="Acampamento" class="w-full h-full object-cover opacity-[0.15] mix-blend-multiply" onerror="this.src='https://placehold.co/260x410/f0fdf4/0d9488?text=Acampamento'">
+                        </div>
+
+                        <!-- Header Verso -->
+                        <div id="cardBackHeader" class="bg-slate-800 text-white px-3 py-2 flex items-center justify-center text-center rounded-t-xl relative z-10 transition-colors">
+                            <!-- Furinho Argola VERSO (Alinhado com a frente quando dobrado ao meio) -->
+                            <div class="absolute top-2 right-2 w-4 h-4 rounded-full bg-slate-100 border border-slate-300/50 shadow-inner z-20 print:border-slate-400 flex items-center justify-center">
+                                <div class="w-2 h-2 rounded-full bg-slate-200/50"></div>
+                            </div>
+
+                            <h5 class="font-bold text-[13px] uppercase tracking-wider flex items-center gap-1.5 text-slate-100 mt-0.5">
+                                <i data-lucide="activity" class="w-4 h-4 text-red-400" id="cardBackHeaderIcon"></i> DADOS MÉDICOS
+                            </h5>
+                        </div>
+
+                        <!-- Corpo Verso -->
+                        <div class="p-3 space-y-2 flex-grow flex flex-col justify-center relative z-10">
+                            
+                            <!-- Alergias -->
+                            <div id="blockAlergias" class="space-y-0.5">
+                                <span class="text-red-600 font-extrabold text-[9.5px] uppercase tracking-wider block flex items-center gap-1" id="labelAlergias">
+                                    <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> ALERGIAS CRÍTICAS
+                                </span>
+                                <p id="cardAlergias" class="text-slate-900 font-bold text-[11px] leading-snug bg-red-50/60 py-1 px-2 rounded border border-red-100">Dipirona, Picada de Abelha/Vespa</p>
+                            </div>
+
+                            <!-- Condicoes Medicas -->
+                            <div id="blockCondicoes" class="space-y-0.5">
+                                <span class="text-amber-700 font-extrabold text-[9.5px] uppercase tracking-wider block flex items-center gap-1" id="labelCondicoes">
+                                    <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> CONDIÇÕES
+                                </span>
+                                <p id="cardCondicoes" class="text-slate-800 font-semibold text-[11px] leading-snug bg-slate-50 py-1 px-2 border-l-2 border-amber-400">Risco de Anafilaxia, Asma Moderada</p>
+                            </div>
+
+                            <!-- Uso de Medicamentos -->
+                            <div id="blockMeds" class="space-y-0.5">
+                                <span class="text-slate-600 font-extrabold text-[9.5px] uppercase tracking-wider block flex items-center gap-1">
+                                    <i data-lucide="pill" class="w-3.5 h-3.5"></i> USO DE MEDICAMENTOS
+                                </span>
+                                <p id="cardMeds" class="text-slate-800 font-semibold text-[10.5px] leading-snug bg-slate-50 py-1 px-2 border-l-2 border-slate-300">Losartana 50mg (1x ao dia), Bombinha</p>
+                            </div>
+
+                            <!-- Box Epipen -->
+                            <div id="blockEpipen" class="bg-amber-50 border border-amber-300 p-2 rounded-lg space-y-0.5 shadow-sm">
+                                <span class="text-amber-900 font-black text-[9.5px] uppercase flex items-center gap-1">
+                                    <i data-lucide="syringe" class="w-3.5 h-3.5 text-amber-600"></i> EPIPEN / INJETÁVEL
+                                </span>
+                                <p class="text-[10px] text-amber-950 font-medium leading-tight mt-0.5">Localização: <span id="cardEpipenLoc" class="font-bold underline">Bolso frontal vermelho</span></p>
+                            </div>
+
+                            <!-- Plano de Saude -->
+                            <div id="blockPlano" class="space-y-1 pt-1 border-t border-slate-100">
+                                <span class="text-slate-500 font-bold text-[10px] uppercase block">PLANO DE SAÚDE / CONVÊNIO:</span>
+                                <p id="cardPlano" class="text-slate-800 font-bold text-[11px] leading-tight">Unimed - 0123.45678.90<br><span class="font-medium">Central: 0800 123 456</span></p>
+                            </div>
+
+                            <!-- Hospital de Referência -->
+                            <div id="blockHospital" class="space-y-1 pt-1 border-t border-slate-100 mt-1">
+                                <span class="text-slate-500 font-bold text-[10px] uppercase block">HOSPITAL DE REFERÊNCIA:</span>
+                                <p id="cardHospital" class="text-slate-800 font-bold text-[11px] leading-tight">Hospital Sírio-Libanês / Rede D'Or</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Lucide Icons Initialization with Guard Check
+        function initIcons() {
+            if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                lucide.createIcons();
+            }
+        }
+
+        // Definicao dos Temas
+        const themes = {
+            adulto: {
+                name: 'Adulto',
+                primary: '#dc2626', // Padrao, substituido dinamicamente pelo color picker
+                primaryLight: '#fef2f2',
+                border: '#fca5a5',
+                backHeaderBg: '#1e293b',
+                badgeBg: 'bg-red-100 text-red-700',
+                btnActive: 'bg-white text-slate-900 shadow-sm',
+                btnInactive: 'text-slate-600 hover:text-slate-900',
+                iconBoxClass: 'bg-red-50 border-red-100 text-red-600'
+            },
+            crianca: {
+                name: 'Infantil',
+                primary: '#0d9488',
+                primaryLight: '#f0fdf4',
+                border: '#2dd4bf',
+                backHeaderBg: '#134e4a',
+                badgeBg: 'bg-teal-100 text-teal-800',
+                btnActive: 'bg-white text-slate-900 shadow-sm',
+                btnInactive: 'text-slate-600 hover:text-slate-900',
+                iconBoxClass: 'bg-teal-50 border-teal-100 text-teal-600'
+            }
+        };
+
+        let currentThemeKey = 'adulto';
+
+        function setTheme(themeKey) {
+            currentThemeKey = themeKey;
+            const theme = themes[themeKey];
+            
+            // Define a cor ativa: Pega a cor dinâmica se for adulto, senão usa a cor padrao infantil
+            const colorPicker = document.getElementById('adultColorPicker');
+            const currentColor = (themeKey === 'adulto' && colorPicker) ? colorPicker.value : theme.primary;
+
+            // Atualizar classes dos botoes do seletor
+            ['adulto', 'crianca'].forEach(k => {
+                const btn = document.getElementById(`btnTheme${k.charAt(0).toUpperCase() + k.slice(1)}`);
+                if (btn) {
+                    if (k === themeKey) {
+                        btn.className = `flex-1 md:flex-initial px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${theme.btnActive}`;
+                    } else {
+                        btn.className = `flex-1 md:flex-initial px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${theme.btnInactive}`;
+                    }
+                }
+            });
+
+            // Gerenciar Seletor de Cor (Opacidade visual)
+            const pickerContainer = document.getElementById('colorPickerContainer');
+            if (pickerContainer) {
+                pickerContainer.style.opacity = themeKey === 'adulto' ? '1' : '0.4';
+                pickerContainer.style.pointerEvents = themeKey === 'adulto' ? 'auto' : 'none';
+            }
+
+            // Atualizar Badge do Header e Icone
+            const badge = document.getElementById('headerBadge');
+            if (badge) {
+                badge.className = `${theme.badgeBg} text-xs px-2.5 py-0.5 rounded-full font-bold uppercase transition-colors`;
+            }
+
+            const iconBox = document.getElementById('headerIconBox');
+            if (iconBox) {
+                iconBox.className = `w-12 h-12 rounded-xl border flex items-center justify-center shrink-0 shadow-sm transition-colors ${theme.iconBoxClass}`;
+            }
+
+            const themeIndicator = document.getElementById('themeIndicatorLabel');
+            if (themeIndicator) {
+                themeIndicator.textContent = `Tema: ${theme.name}`;
+            }
+
+            // Atualizar Cartoes Visuais com a cor dinamica
+            const frontHeader = document.getElementById('cardFrontHeader');
+            if (frontHeader) frontHeader.style.backgroundColor = currentColor;
+
+            const frontFooter = document.getElementById('cardFrontFooter');
+            if (frontFooter) frontFooter.style.backgroundColor = currentColor;
+
+            const backHeader = document.getElementById('cardBackHeader');
+            if (backHeader) backHeader.style.backgroundColor = theme.backHeaderBg;
+
+            const bloodBadge = document.getElementById('cardBloodBadge');
+            if (bloodBadge) {
+                bloodBadge.style.borderColor = currentColor;
+            }
+
+            const bloodText = document.getElementById('cardTipoSangue');
+            if (bloodText) {
+                bloodText.style.color = currentColor;
+            }
+
+            const cardIceTitle = document.getElementById('cardIceTitle');
+            if (cardIceTitle) {
+                cardIceTitle.style.color = currentColor;
+            }
+
+            const btnPrint = document.getElementById('btnPrint');
+            if (btnPrint) {
+                btnPrint.style.backgroundColor = currentColor;
+            }
+
+            // Controle da Marca D'agua do tema Infantil
+            const watermarks = document.querySelectorAll('.watermark-bg');
+            if (themeKey === 'crianca') {
+                watermarks.forEach(w => {
+                    w.classList.remove('opacity-0');
+                    w.classList.add('opacity-[0.15]');
+                });
+            } else {
+                watermarks.forEach(w => {
+                    w.classList.remove('opacity-[0.15]');
+                    w.classList.add('opacity-0');
+                });
+            }
+
+            initIcons();
+        }
+
+        // Mapeamento dos Campos do Formulario
+        const fields = {
+            nome: { input: 'inputNome', card: 'cardNome' },
+            nasc: { input: 'inputNasc', card: 'cardNasc' },
+            peso: { input: 'inputPeso', card: 'cardPeso', toggle: 'togglePeso', box: 'cardBoxPeso' },
+            altura: { input: 'inputAltura', card: 'cardAltura', toggle: 'toggleAltura', box: 'cardBoxAltura' },
+            tipoSangue: { input: 'inputTipoSangue', card: 'cardTipoSangue' },
+            ice1: { input: 'inputIce1', card: 'cardIce1' },
+            ice2: { input: 'inputIce2', card: 'cardIce2', toggle: 'toggleIce2' },
+            ice3: { input: 'inputIce3', card: 'cardIce3', toggle: 'toggleIce3' },
+            alergias: { input: 'inputAlergias', card: 'cardAlergias', toggle: 'toggleAlergias', block: 'blockAlergias' },
+            condicoes: { input: 'inputCondicoes', card: 'cardCondicoes', toggle: 'toggleCondicoes', block: 'blockCondicoes' },
+            meds: { input: 'inputMeds', card: 'cardMeds', toggle: 'toggleMeds', block: 'blockMeds' },
+            epipenLoc: { input: 'inputEpipenLoc', card: 'cardEpipenLoc', toggle: 'toggleEpipen', block: 'blockEpipen' },
+            plano: { input: 'inputPlano', card: 'cardPlano', toggle: 'togglePlano', block: 'blockPlano' },
+            hospital: { input: 'inputHospital', card: 'cardHospital', toggle: 'toggleHospital', block: 'blockHospital' }
+        };
+
+        function updateCard() {
+            Object.keys(fields).forEach(key => {
+                const conf = fields[key];
+                const inputElem = document.getElementById(conf.input);
+                const cardElem = document.getElementById(conf.card);
+
+                if (inputElem && cardElem) {
+                    cardElem.textContent = inputElem.value;
+                }
+
+                // Toggles de Visibilidade em Blocos (Gerais)
+                if (conf.toggle && conf.block) {
+                    const toggleElem = document.getElementById(conf.toggle);
+                    const blockElem = document.getElementById(conf.block);
+                    if (toggleElem && blockElem) {
+                        blockElem.style.display = toggleElem.checked ? 'block' : 'none';
+                    }
+                }
+
+                // Ajustes Especiais de Contatos ICE
+                if ((key === 'ice2' || key === 'ice3') && conf.toggle) {
+                    const toggleElem = document.getElementById(conf.toggle);
+                    const cardElemTarget = document.getElementById(conf.card);
+                    if (toggleElem && cardElemTarget) {
+                        cardElemTarget.style.display = toggleElem.checked ? 'block' : 'none';
+                    }
+                }
+            });
+
+            // Lógica Específica para Nasc, Peso e Altura na mesma linha
+            const togglePeso = document.getElementById('togglePeso');
+            const toggleAltura = document.getElementById('toggleAltura');
+            const boxPeso = document.getElementById('cardBoxPeso');
+            const boxAltura = document.getElementById('cardBoxAltura');
+            const dividerNasc = document.getElementById('cardDividerNasc');
+            const dividerPesoAltura = document.getElementById('cardDividerPesoAltura');
+
+            const showPeso = togglePeso ? togglePeso.checked : false;
+            const showAltura = toggleAltura ? toggleAltura.checked : false;
+
+            if (boxPeso) boxPeso.style.display = showPeso ? 'block' : 'none';
+            if (boxAltura) boxAltura.style.display = showAltura ? 'block' : 'none';
+
+            // A primeira divisória (após Nasc) aparece se Peso OU Altura estiverem ativos
+            if (dividerNasc) {
+                dividerNasc.style.display = (showPeso || showAltura) ? 'block' : 'none';
+            }
+
+            // A segunda divisória aparece apenas se AMBOS Peso e Altura estiverem ativos
+            if (dividerPesoAltura) {
+                dividerPesoAltura.style.display = (showPeso && showAltura) ? 'block' : 'none';
+            }
+        }
+
+        // Attach Event Listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            initIcons();
+            setTheme('adulto');
+            
+            // Event listener para o Color Picker reativo
+            const colorPicker = document.getElementById('adultColorPicker');
+            if (colorPicker) {
+                colorPicker.addEventListener('input', () => {
+                    if (currentThemeKey === 'adulto') {
+                        setTheme('adulto'); // Reaplica o tema puxando a nova cor
+                    }
+                });
+            }
+
+            Object.keys(fields).forEach(key => {
+                const conf = fields[key];
+                const inputElem = document.getElementById(conf.input);
+                if (inputElem) {
+                    inputElem.addEventListener('input', updateCard);
+                    inputElem.addEventListener('change', updateCard);
+                }
+                if (conf.toggle) {
+                    const toggleElem = document.getElementById(conf.toggle);
+                    if (toggleElem) {
+                        toggleElem.addEventListener('change', updateCard);
+                    }
+                }
+            });
+
+            // Initial render call
+            updateCard();
+        });
+    </script>
+</body>
+</html>
